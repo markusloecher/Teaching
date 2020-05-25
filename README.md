@@ -1,3 +1,3 @@
 # Teaching
 
-Teaching materials for my lecturs at HWR Berlin
+Teaching materials for some of my lectures at HWR Berlin
