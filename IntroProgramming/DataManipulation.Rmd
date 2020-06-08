@@ -1,0 +1,331 @@
+---
+title: "Simple Modeling in R"
+author: "Markus Loecher, Berlin School of Economics and Law"
+output:
+   html_document:
+    #variant: markdown_github
+    toc: true
+    number_sections: true
+    self_contained: no
+    toc_depth: 2
+    toc_float: true
+    fig_caption: true
+
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message=FALSE)
+baseR = FALSE
+library(pander)
+```
+
+
+# Data manipulation
+
+## Data: nycflights13
+
+To explore the basic data manipulation verbs of dplyr, we'll start with the built in
+`nycflights13` data frame. This dataset contains all `r nrow(nycflights13::flights)` flights that departed from New York City in 2013. The data comes from the US [Bureau of Transportation Statistics](http://www.transtats.bts.gov/DatabaseInfo.asp?DB_ID=120&Link=0), and is documented in `?nycflights13`
+
+```{r}
+library(nycflights13)
+dim(flights)
+head(flights)
+```
+
+dplyr can work with data frames as is, but if you're dealing with large data, it's worthwhile to convert them to a `tbl_df`: this is a wrapper around a data frame that won't accidentally print a lot of data to the screen.
+
+### Single table verbs
+
+Dplyr aims to provide a function for each basic verb of data manipulation:
+
+* `filter()` (and `slice()`)
+* `arrange()`
+* `select()` (and `rename()`)
+* `distinct()`
+* `mutate()` (and `transmute()`)
+* `summarise()`
+* `sample_n()` (and `sample_frac()`)
+
+If you've used plyr before, many of these will be familar.
+
+### Filter rows with `filter()`
+
+`filter()` allows you to select a subset of rows in a data frame. The first argument is the name of the data frame. The second and subsequent arguments are the expressions that filter the data frame:
+
+For example, we can select all flights on January 1st with:
+
+```{r}
+library(dplyr)
+filter(flights, month == 1, day == 1)
+```
+
+This is equivalent to the more verbose code in base R:
+
+```{r, eval = FALSE}
+flights[flights$month == 1 & flights$day == 1, ]
+```
+
+To select rows by position, use `slice()`:
+
+```{r}
+slice(flights, 1:10)
+```
+
+### Arrange rows with `arrange()`
+
+`arrange()` works similarly to `filter()` except that instead of filtering or selecting rows, it reorders them. It takes a data frame, and a set of column names (or more complicated expressions) to order by. If you provide more than one column name, each additional column will be used to break ties in the values of preceding columns:
+
+```{r}
+arrange(flights, year, month, day)
+```
+
+Use `desc()` to order a column in descending order:
+
+```{r}
+arrange(flights, desc(arr_delay))
+```
+
+
+### Select columns with `select()`
+
+Often you work with large datasets with many columns but only a few are actually of interest to you. `select()` allows you to rapidly zoom in on a useful subset using operations that usually only work on numeric variable positions:
+
+```{r}
+# Select columns by name
+select(flights, year, month, day)
+# Select all columns between year and day (inclusive)
+select(flights, year:day)
+# Select all columns except those from year to day (inclusive)
+select(flights, -(year:day))
+```
+
+
+You can rename variables with `select()` by using named arguments:
+
+```{r}
+select(flights, tail_num = tailnum)
+```
+
+But because `select()` drops all the variables not explicitly mentioned, it's not that useful. Instead, use `rename()`:
+
+```{r}
+rename(flights, tail_num = tailnum)
+```
+
+### Extract distinct (unique) rows
+
+Use `distinct()`to find unique values in a table:
+
+```{r}
+distinct(flights, tailnum)
+distinct(flights, origin, dest)
+```
+
+(This is very similar to `base::unique()` but should be much faster.)
+
+### Add new columns with `mutate()`
+
+Besides selecting sets of existing columns, it's often useful to add new columns that are functions of existing columns.  This is the job of `mutate()`:
+
+```{r}
+mutate(flights,
+  gain = arr_delay - dep_delay,
+  speed = distance / air_time * 60)
+```
+
+mutate allows you to refer to columns that you've just created:
+
+```{r}
+mutate(flights,
+  gain = arr_delay - dep_delay,
+  gain_per_hour = gain / (air_time / 60)
+)
+```
+
+
+### Summarise values with `summarise()`
+
+The last verb is `summarise()`. It collapses a data frame to a single row (this is exactly equivalent to `plyr::summarise()`):
+
+```{r}
+summarise(flights,
+  delay = mean(dep_delay, na.rm = TRUE))
+```
+
+Below, we'll see how this verb can be very useful.
+
+
+### Grouped operations
+
+These verbs are useful on their own, but they become really powerful when you apply them to groups of observations within a dataset. In dplyr, you do this by with the `group_by()` function. It breaks down a dataset into specified groups of rows. When you then apply the verbs above on the resulting object they'll be automatically applied "by group". Most importantly, all this is achieved by using the same exact syntax you'd use with an ungrouped object.
+
+
+In the following example, we split the complete dataset into individual planes and then summarise each plane by counting the number of flights (`count = n()`) and computing the average distance (`dist = mean(Distance, na.rm = TRUE)`) and arrival delay (`delay = mean(ArrDelay, na.rm = TRUE)`). We then use ggplot2 to display the output.
+
+```{r, warning = FALSE, message = FALSE, fig.width = 6}
+by_tailnum <- group_by(flights, tailnum)
+delay <- summarise(by_tailnum,
+  count = n(),
+  dist = mean(distance, na.rm = TRUE),
+  delay = mean(arr_delay, na.rm = TRUE))
+delay <- filter(delay, count > 20, dist < 2000)
+
+# Interestingly, the average delay is only slightly related to the
+# average distance flown by a plane.
+library(ggplot2)
+ggplot(delay, aes(dist, delay)) +
+  geom_point(aes(size = count), alpha = 1/2) +
+  geom_smooth() +
+  scale_size_area()
+```
+
+You use `summarise()` with __aggregate functions__, which take a vector of values and return a single number. There are many useful examples of such functions in base R like `min()`, `max()`, `mean()`, `sum()`, `sd()`, `median()`, and `IQR()`. dplyr provides a handful of others:
+
+* `n()`: the number of observations in the current group
+
+* `n_distinct(x)`:the number of unique values in `x`.
+
+* `first(x)`, `last(x)` and `nth(x, n)` - these work
+  similarly to `x[1]`, `x[length(x)]`, and `x[n]` but give you more control
+  over the result if the value is missing.
+
+For example, we could use these to find the number of planes and the number of flights that go to each possible destination:
+
+```{r}
+destinations <- group_by(flights, dest)
+summarise(destinations,
+  planes = n_distinct(tailnum),
+  flights = n()
+)
+```
+
+
+## Titanic
+
+
+```{r, echo = TRUE }
+train <- read.csv("data/TitanicTrain.csv")
+```
+
+
+The disaster was famous for saving "women and children first", so let's take a look at the Sex and Age variables to see if any patterns are evident. We'll start with the gender of the passengers. After reloading the data into R, take a look at the summary of this variable:
+
+```{r, echo = TRUE }
+round(prop.table(table(train$Sex, train$Survived),1),2)
+```
+
+
+Let's create a new variable, "Child", to indicate whether the passenger is below the age of 18:
+
+```{r, echo = TRUE }
+train$Child <- 0
+train$Child[train$Age < 18] <- 1
+```
+
+Now we want to create a table with both gender and age to see the survival proportions for different subsets.
+Recall the dplyr version of the aggregate function:
+
+```{r, echo = TRUE}
+suppressPackageStartupMessages(require(dplyr))
+summarise(group_by(train, Sex, Child), round(mean(Survived),2), length(Survived))
+
+```
+
+
+While the class variable is limited to a manageable 3 values, the fare is again a continuous variable that needs to be reduced to something that can be easily tabulated. Let's bin the fares into less than $10, between $10 and $20, $20 to $30 and more than $30 and store it to a new variable:
+
+```{r, echo = TRUE}
+train$Fare2 <- '30+'
+ train$Fare2[train$Fare < 30 & train$Fare >= 20] <- '20-30'
+ train$Fare2[train$Fare < 20 & train$Fare >= 10] <- '10-20'
+train$Fare2[train$Fare < 10] <- '<10'
+```
+
+* Use the summarise function to compute the proportions and  in each group defined by child, gender and Fare2:
+
+```{r, echo = FALSE}
+SurvProp = summarise(group_by(train, Child, Fare2, Sex), round(mean(Survived),2), length(Survived))
+
+SurvProp = SurvProp[order(SurvProp$`round(mean(Survived), 2)`),]
+```
+
+* Find strong differences between male/female survival probabilities.
+* Partition your data into even finer subgroups, e.g. age and/or embarkation port and repeat.
+
+```{r, echo = FALSE}
+summarise(group_by(train, Child, Fare2, Sex, Embarked), round(mean(Survived),2), length(Survived))
+
+```
+
+
+
+----------------------------
+
+# Descriptive statistics
+
+## Measures of Central tendency
+
+```{r}
+
+mean(flights$dep_delay)
+
+mean(flights$dep_delay, na.rm=T)
+
+median(flights$dep_delay, na.rm=T)
+
+#robustness
+mean(flights$dep_delay, na.rm=T, trim = 0.1)
+```
+
+
+## Dispersion measures
+
+Only sample stdev is included!
+
+```{r}
+#var
+
+sd(flights$dep_delay, na.rm=T)
+
+IQR(flights$dep_delay, na.rm=T)
+
+mad(flights$dep_delay, na.rm=T)
+
+```
+
+
+## Descriptive boxplots
+
+```{r}
+#define our own transformation
+require(scales) # trans_new() is in the scales library
+sign_sqrt_trans = function() trans_new("sign_sqrt", function(x) sign(x)*sqrt(abs(x)), function(x) sign(x)*x^2)
+
+```
+
+### Delays by carrier
+
+```{r}
+if (baseR){
+  boxplot(arr_delay ~ carrier, data=flights)
+  grid()
+} else {
+  p = ggplot(flights, aes( carrier,arr_delay))
+  p + geom_boxplot() + coord_trans(y="sign_sqrt") #+ scale_y_sqrt()
+}
+```
+
+There appear to be significant delays by time-of-day:
+
+```{r, fig.width=10}
+if (baseR){
+  boxplot(arr_delay ~ hour, data=flights)
+  grid()
+} else {
+  p = ggplot(flights, aes( factor(hour),arr_delay))
+  p + geom_boxplot() + coord_trans(y="sign_sqrt") #+ scale_y_sqrt()
+}
+
+```
+

@@ -1,0 +1,304 @@
+---
+title: "Work in class I"
+author: "M Loecher"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+
+library("xts")
+library("dygraphs")
+
+rerun=TRUE
+```
+
+## Useful commands from Chap 5 from DataCamp *Intermediate R*
+
+### data manipulation
+
+* [abs()](http://www.rdocumentation.org/packages/base/functions/MathFun): Calculate the absolute value.
+* [sum()](http://www.rdocumentation.org/packages/base/functions/sum): Calculate the sum of all the values in a data structure.
+* [mean()](http://www.rdocumentation.org/packages/base/functions/mean): Calculate the arithmetic mean.
+* [round()](http://www.rdocumentation.org/packages/base/functions/round): Round the values to 0 decimal places by default. Try out ?round in the console for variations of round() and ways to change the number of digits to round to.
+
+* [seq()](http://www.rdocumentation.org/packages/base/functions/seq): Generate sequences, by specifying the from, to, and by arguments.
+* [rep()](http://www.rdocumentation.org/packages/base/functions/rep): Replicate elements of vectors and lists.
+* [sort()](http://www.rdocumentation.org/packages/base/functions/sort): Sort a vector in ascending order. Works on numerics, but also on character strings and logicals.
+* [rev()](http://www.rdocumentation.org/packages/base/functions/rev): Reverse the elements in a data structures for which reversal is defined.
+* [str()](http://www.rdocumentation.org/packages/base/functions/str): Display the structure of any R object.
+* [append()](http://www.rdocumentation.org/packages/base/functions/append): Merge vectors or lists.
+* is.*(): Check for the class of an R object.
+* as.*(): Convert an R object from one class to another.
+* [unlist()](http://www.rdocumentation.org/packages/base/functions/unlist): Flatten (possibly embedded) lists to produce a vector.
+
+```{r,echo=TRUE}
+#Define straight line function
+sl = function(x, #x values
+              m,#slope
+              b #y-axis intercept
+){
+   y = m*x + b
+   return(y)
+}
+set.seed(1)
+x=seq(1,10,by=2)
+yHat = sl(x,1.5,-2)
+y = yHat + rnorm(length(x))
+
+errors = y - yHat
+
+#Compute the sum of the squared errors
+rss = sum(errors^2)
+
+#Compute the mean of the absolute errors
+mad = mean(abs(errors))
+
+ea = abs(errors)
+mad = mean(ea)
+
+#print these two numbers rounded to 3 digits
+cat(round(c(mad, rss),3) )
+
+#sort the errors
+sort(errors)   
+#reverse the above in two ways
+sort(errors, decreasing = TRUE)  
+rev(sort(errors))
+
+#append rss and mad
+append(rss,mad)
+
+#get info on the objects sl and rss   
+str(rss)
+str(sl)
+
+#repeat the values of x 3 times
+rep(x,times=3)
+rep(x, each=3)
+```
+
+
+### string manipulation
+
+grepl & grep
+
+In their most basic form, regular expressions can be used to see whether a pattern exists inside a character string or a vector of character strings. For this purpose, you can use:
+
+* [grepl()](http://www.rdocumentation.org/packages/base/functions/grepl), which returns TRUE when a pattern is found in the corresponding character string.
+* [grep()](http://www.rdocumentation.org/packages/base/functions/grep), which returns a vector of indices of the character strings that contains the pattern.
+* [sub()](http://www.rdocumentation.org/packages/base/functions/sub)  replaces the first match, 
+* [gsub()](http://www.rdocumentation.org/packages/base/functions/gsub) replaces all matches.
+
+
+```{r,echo=TRUE}
+emails <- c("john.doe@ivyleague.edu", "education@world.gov", "dalai.lama@peace.org",
+            "invalid.edu", "quant@bigdatacollege.edu", "cookie.monster@sesame.tv")
+
+
+```
+
+1. Use *grepl()* to generate a vector of logicals that indicates whether these email addressess end in ".edu". Print the result to the output.
+2. Do the same thing with *grep()*, but this time save the resulting indexes in a variable hits.
+3. Use the variable *hits* to select from the emails vector only the emails that end in ".edu".
+4. With the advanced regular expression "@.*\\.edu$", use sub() to replace the match with "@datacamp.edu". Since there will only be one match per character string, gsub() is not necessary here. Inspect the resulting output.
+
+### Times and Dates
+
+In R, dates are represented by Date objects, while times are represented by POSIXct objects. Under the hood, however, these dates and times are simple numerical values. Date objects store the number of days since the 1st of January in 1970. POSIXct objects on the other hand, store the number of seconds since the 1st of January in 1970.
+
+The 1st of January in 1970 is the common origin for representing times and dates in a wide range of programming languages. There is no particular reason for this; it is a simple convention. Of course, it's also possible to create dates and times before 1970; the corresponding numerical values are simply negative in this case.
+
+```{r}
+# Get the current date: today
+
+
+# See what today looks like under the hood
+
+
+# Get the current time: now
+
+
+# See what now looks like under the hood
+```
+
+
+```{r}
+# Definition of character strings representing dates
+str1 <- "May 23, '96"
+str2 <- "2012-03-15"
+str3 <- "30/January/2006"
+
+# Convert the strings to dates: date1, date2, date3
+date1 <- as.Date(str1, format = "%b %d, '%y")
+
+
+
+# Convert dates to formatted strings
+format(date1, "%A")
+```
+
+Similar to working with dates, you can use as.POSIXct() to convert from a character string to a POSIXct object, and format() to convert from a POSIXct object to a character string. Again, you have a wide variety of symbols:
+
+```{r}
+# Definition of character strings representing times
+str1 <- "May 23, '96 hours:23 minutes:01 seconds:45"
+str2 <- "2012-3-12 14:23:08"
+
+# Convert the strings to POSIXct objects: time1, time2
+time1 <- as.POSIXct(str1, format = "%B %d, '%y hours:%H minutes:%M seconds:%S")
+
+
+# Convert times to formatted strings
+```
+
+
+Note that there is a potential problem with local settings in R:
+
+```{r}
+
+as.Date("May 23, 1996", format = "%b %d, %Y")
+as.Date("Mai 23, 1996", format = "%b %d, %Y")
+Sys.getlocale()
+
+Sys.setlocale("LC_ALL","English")
+as.Date("May 23, 1996", format = "%b %d, %Y")
+```
+
+
+
+## Our first kaggle competition:
+
+Create a kaggle account. Download the San Francisco crime data from https://www.kaggle.com/c/sf-crime. Alternatively, download a smaller version here:
+
+https://github.com/markusloecher/Teaching/blob/master/IntroProgramming/data/trainSmall.zip
+
+Read in the train data. 
+
+```{r, eval = rerun}
+
+bigData=FALSE#change if you want the large data set !
+
+if (bigData){
+   crimeSF = read.csv(unz("C:/Users/loecherm/TooBigForDropbox/sf-crime/train.csv.zip", "train.csv"), stringsAsFactors = FALSE)
+   N = nrow(crimeSF)
+
+   set.seed(1)
+   RanRows = sample(N,10^5)
+   crimeSFsmall = crimeSF[RanRows,]
+   write.csv(crimeSFsmall, file = "C:/Users/loecherm/TooBigForDropbox/sf-crime/trainSmall.csv", quote=TRUE, row.names=FALSE)
+} else {
+   crimeSF = read.csv("C:/Users/loecherm/TooBigForDropbox/sf-crime/trainSmall.csv", stringsAsFactors = FALSE)
+}
+
+```
+
+
+1. Use the table command to tabulate the types ("Category") of crime.
+
+```{r,echo=FALSE, eval = rerun}
+
+```
+
+2. Sort the table in decreasing order 
+
+```{r,echo=FALSE, eval = rerun}
+
+```
+
+3. Make sure that your first column ("Dates") is not a *factor*, either by adding the *stringsAsFactors = FALSE* option to the *read.csv()* command or by converting it later on: 
+
+```{r, eval = rerun}
+
+```
+
+
+4. Using the commands *table()* and *as.Date()* or *as.POSIXct()* build a daily time series of counts of crimes.
+
+```{r, eval = rerun}
+
+```
+
+5. Plot that time series.
+
+```{r, eval = rerun}
+
+```
+
+6. Convert the *Dates* column to a *POSIXct* object.
+
+```{r}
+
+```
+
+
+7. Compute the violent crime rate per day, where violent crime is defined as
+
+```{r,echo=TRUE, eval = TRUE}
+crimeSF$violent = crimeSF$Category %in% c("ROBBERY", "ASSAULT", "KIDNAPPING", "SEX OFFENSES FORCIBLE")
+```
+
+
+Learn about the powerful function *agregate*
+
+```{r, eval = TRUE}
+aggregate(violent ~ DayOfWeek, data = crimeSF, FUN = sum)
+```
+
+
+```{r}
+
+
+plot(ViolRate, type="l", main = "violent crime", xlab = "time", col = "darkblue", lwd=2)
+```
+
+
+8. Compute the violent crime rates in dependence of day of week.
+
+```{r, fig.height=5,eval = rerun}
+WD = factor(crimeSF$DayOfWeek)
+
+
+#ViolRate = V2/V1
+#barplot(ViolRate)
+```
+
+9. Create a barplot of these
+
+10. Why do you think Sunday sees the highest rate of these types of crimes?
+
+11. Using the command *save(crimeSF, file = "crimeSF.rda")*, save your crimeSF data as a binary, compressed R data file *crimeSF.rda*.
+
+12. Use grep to find all crimes on MISSION street
+
+### Advanced:
+
+1. Use the package dygraphs and look up the documentation at http://rstudio.github.io/dygraphs/ Try to understand the pipe operator %>% and create another interactive time series chart with a range selector!
+
+```{r echo=FALSE,eval = rerun}
+h = table(format(crimeSF$Dates,  "%Y-%m-%d %H:00:00"))
+
+```
+
+2. Compute and visualize the violent crime rate as a function of the hour of the week.
+
+- Create the Weekhour variable with the library *lubridate*
+
+```{r}
+library(lubridate)
+ymd = ymd_hms(crimeSF$Dates)
+
+
+```
+
+- plot
+
+```{r, fig.height=5}
+
+
+```
+
+
+
+
+
