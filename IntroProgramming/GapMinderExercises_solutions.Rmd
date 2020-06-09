@@ -1,0 +1,213 @@
+---
+title: "GapMinder Exercises"
+author: "Markus Loecher, Berlin School of Economics and Law"
+output:
+   html_document:
+    #variant: markdown_github
+    toc: true
+    number_sections: true
+    self_contained: no
+    toc_depth: 2
+    toc_float: true
+    fig_caption: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(gapminder)
+library(dplyr)
+library(ggplot2)
+EVAL = FALSE
+```
+
+# Data Manipulation 
+
+* Add a `filter()` line after the pipe (`%>%`) to extract only the observations from the year 1957.  Remember that you use `==` to compare two values.
+
+```{r, eval=EVAL}
+# Filter the gapminder dataset for the year 1957
+gapminder %>% filter(year == 1957)
+```
+
+* Filter the `gapminder` data to retrieve only the observation from China in the year 2002.
+
+```{r}
+# Filter for China in 2002
+gapminder %>% filter(country == "China")
+```
+
+
+* Sort the `gapminder` dataset in ascending order of life expectancy (`lifeExp`).
+* Sort the `gapminder` dataset in descending order of life expectancy.
+
+```{r}
+# Sort in ascending order of lifeExp
+gapminder %>% arrange(lifeExp)
+
+  
+# Sort in descending order of lifeExp
+gapminder %>% arrange(desc(lifeExp))
+```
+
+* Use `filter()` to extract observations from just the year 1957, then use `arrange()` to sort in descending order of population (`pop`).
+
+```{r}
+# Filter for the year 1957, then arrange in descending order of population
+gapminder %>% filter(year == 1957) %>% arrange(desc(pop))
+```
+
+
+* Use `mutate()` to change the existing `lifeExp` column, by multiplying it by 12: `12 * lifeExp`.
+* Use `mutate()` to add a new column, called `lifeExpMonths`, calculated as `12 * lifeExp`.
+
+
+```{r}
+# Use mutate to change lifeExp to be in months
+
+
+# Use mutate to create a new column called lifeExpMonths
+mutate(gapminder, lifeExpMonths=12*lifeExp)
+```
+
+
+In one sequence of pipes on the `gapminder` dataset:
+* `filter()` for observations from the year 2007,
+* `mutate()` to create a column `lifeExpMonths`, calculated as `12 * lifeExp`, and
+* `arrange()` in descending order of that new column
+
+```{r}
+# Filter, mutate, and arrange the gapminder dataset
+gapminder %>% filter(year == 2007) %>% mutate(lifeExpMonths=12*lifeExp) %>% arrange(desc(lifeExpMonths))
+```
+
+* Filter `gapminder` for observations from the year 1952, and assign it to a new dataset `gapminder_1952` using the assignment operator (`<-`).
+
+```{r}
+# Create gapminder_1952
+gapminder_1952 <- gapminder %>% filter(year == 1952)
+```
+
+# Data Visualization
+
+
+* Change the scatter plot of `gapminder_1952` so that (`pop`) is on the x-axis and GDP per capita (`gdpPercap`) is on the y-axis.
+
+
+```{r, eval= EVAL}
+# Change to put pop on the x-axis and gdpPercap on the y-axis
+#ggplot(gapminder_1952, aes(x = gdpPercap, y = lifeExp)) +
+#  geom_point()
+ggplot(gapminder_1952, aes(x = pop, y = gdpPercap)) +
+  geom_point()
+```
+
+* Create a scatter plot of `gapminder_1952` with population (`pop`) is on the x-axis and life expectancy (`lifeExp`) on the y-axis.
+
+```{r}
+# Create a scatter plot with pop on the x-axis and lifeExp on the y-axis
+ggplot(gapminder_1952, aes(x = pop, y = lifeExp)) +
+  geom_point()
+```
+
+* Change the existing scatter plot (code provided) to put the x-axis (representing population) on a log scale.
+
+```{r, eval= EVAL}
+# Change this plot to put the x-axis on a log scale
+ggplot(gapminder_1952, aes(x = pop, y = lifeExp)) +
+  geom_point() + scale_x_log10() + scale_y_log10()
+#compare this to base R:
+plot(lifeExp ~ gdpPercap, gapminder_1952, log="xy");grid()
+```
+
+* Create a scatter plot with population (`pop`) on the x-axis and GDP per capita (`gdpPercap`) on the y-axis. Put both the x- and y- axes on a log scale.
+
+```{r}
+# Scatter plot comparing pop and gdpPercap, with both axes on a log scale
+```
+
+* Create a scatter plot with population (`pop`) on the x-axis, life expectancy (`lifeExp`) on the y-axis, and with continent (`continent`) represented by the color of the points. Put the x-axis on a log scale.
+
+```{r}
+# Scatter plot comparing pop and lifeExp, with color representing continent
+ggplot(gapminder_1952, aes(x = pop, y = lifeExp, color = continent, size = gdpPercap)) +  geom_point() + scale_x_log10()
+```
+
+* Modify the scatter plot so that the size of the points represents each country`s GDP per capita (`gdpPercap`).
+
+```{r}
+# Add color representing continent
+# Add the size aesthetic to represent a country`s gdpPercap
+
+```
+
+## Facets
+
+Create a scatter plot of gapminder_1952 with the x-axis representing population (`pop`), the y-axis representing life expectancy (`lifeExp`), and faceted to have one subplot per continent (`continent`). Put the x-axis on a log scale.
+
+```{r}
+# Scatter plot comparing pop and lifeExp, faceted by continent
+
+```
+
+
+* Put GDP per capita (`gdpPercap`) on the x-axis and life expectancy (`lifeExp`) on the y-axis, with continent (`continent`) represented by color and population (`pop`) represented by size.
+
+* Put the x-axis on a log scale 
+
+* Facet by the `year` variable
+
+
+
+```{r}
+# Scatter plot comparing gdpPercap and lifeExp, with color representing continent
+# and size representing population, faceted by year
+ggplot(gapminder, aes(x = gdpPercap, y = lifeExp, color = continent, size = pop)) +   geom_point() +   scale_x_log10() +   facet_wrap(~ year)
+```
+
+Adding title and changing labels:
+
+```{r}
+ggplot(gapminder, aes(x = gdpPercap, y = lifeExp, color = continent, size = pop)) +   geom_point() +   scale_x_log10() +   facet_wrap(~ year) + labs(title="Gapminder", x="GDP per Capita", y = "Life Expectancy")
+```
+
+
+
+# Grouping and summarizing
+
+* Use the `median()` function within a `summarize()` to find the median life expectancy. Save it into a column called `medianLifeExp`
+
+
+```{r}
+# Summarize to find the median life expectancy
+```
+
+* Filter for the year 1957, then use the `median()` function within a `summarize()` to calculate the median life expectancy into a column called `medianLifeExp`
+
+* Find the median life expectancy (`lifeExp`) and maximum GDP per capita (`gdpPercap`) within each year, saving them into `medianLifeExp` and `maxGdpPercap`, respectively.
+
+* Filter the `gapminder` data for the year 1957. Then find the median life expectancy (`lifeExp`) and maximum GDP per capita (`gdpPercap`) **within each continent**, saving them into `medianLifeExp` and `maxGdpPercap`, respectively.
+
+```{r}
+#
+```
+
+
+* Find the median life expectancy (`lifeExp`) and maximum GDP per capita (`gdpPercap`) within each combination of continent and year, saving them into `medianLifeExp` and `maxGdpPercap`, respectively.
+
+```{r}
+# Find median life expectancy and maximum GDP per capita in each continent/year combination
+```
+
+
+```{r}
+by_year <- gapminder %>%
+  group_by(year) %>%
+  summarize(medianLifeExp = median(lifeExp),
+            maxGdpPercap = max(gdpPercap))
+
+# Create a scatter plot showing the change in medianLifeExp over time
+ggplot(by_year, aes(x = year, y = medianLifeExp)) +
+  geom_point() +
+  expand_limits(y = 0)
+```
+
