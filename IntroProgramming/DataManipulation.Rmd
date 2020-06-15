@@ -1,12 +1,12 @@
 ---
-title: "Simple Modeling in R"
+title: "Simple Data Manipulation in R"
 author: "Markus Loecher, Berlin School of Economics and Law"
 output:
    html_document:
     #variant: markdown_github
     toc: true
     number_sections: true
-    self_contained: no
+    self_contained: yes
     toc_depth: 2
     toc_float: true
     fig_caption: true
@@ -17,6 +17,8 @@ output:
 knitr::opts_chunk$set(echo = TRUE, message=FALSE)
 baseR = FALSE
 library(pander)
+library(dplyr)
+library(tidyverse)
 ```
 
 
@@ -201,63 +203,6 @@ summarise(destinations,
 ```
 
 
-## Titanic
-
-
-```{r, echo = TRUE }
-train <- read.csv("data/TitanicTrain.csv")
-```
-
-
-The disaster was famous for saving "women and children first", so let's take a look at the Sex and Age variables to see if any patterns are evident. We'll start with the gender of the passengers. After reloading the data into R, take a look at the summary of this variable:
-
-```{r, echo = TRUE }
-round(prop.table(table(train$Sex, train$Survived),1),2)
-```
-
-
-Let's create a new variable, "Child", to indicate whether the passenger is below the age of 18:
-
-```{r, echo = TRUE }
-train$Child <- 0
-train$Child[train$Age < 18] <- 1
-```
-
-Now we want to create a table with both gender and age to see the survival proportions for different subsets.
-Recall the dplyr version of the aggregate function:
-
-```{r, echo = TRUE}
-suppressPackageStartupMessages(require(dplyr))
-summarise(group_by(train, Sex, Child), round(mean(Survived),2), length(Survived))
-
-```
-
-
-While the class variable is limited to a manageable 3 values, the fare is again a continuous variable that needs to be reduced to something that can be easily tabulated. Let's bin the fares into less than $10, between $10 and $20, $20 to $30 and more than $30 and store it to a new variable:
-
-```{r, echo = TRUE}
-train$Fare2 <- '30+'
- train$Fare2[train$Fare < 30 & train$Fare >= 20] <- '20-30'
- train$Fare2[train$Fare < 20 & train$Fare >= 10] <- '10-20'
-train$Fare2[train$Fare < 10] <- '<10'
-```
-
-* Use the summarise function to compute the proportions and  in each group defined by child, gender and Fare2:
-
-```{r, echo = FALSE}
-SurvProp = summarise(group_by(train, Child, Fare2, Sex), round(mean(Survived),2), length(Survived))
-
-SurvProp = SurvProp[order(SurvProp$`round(mean(Survived), 2)`),]
-```
-
-* Find strong differences between male/female survival probabilities.
-* Partition your data into even finer subgroups, e.g. age and/or embarkation port and repeat.
-
-```{r, echo = FALSE}
-summarise(group_by(train, Child, Fare2, Sex, Embarked), round(mean(Survived),2), length(Survived))
-
-```
-
 
 
 ----------------------------
@@ -312,7 +257,7 @@ if (baseR){
   grid()
 } else {
   p = ggplot(flights, aes( carrier,arr_delay))
-  p + geom_boxplot() + coord_trans(y="sign_sqrt") #+ scale_y_sqrt()
+  p + geom_boxplot() + scale_y_sqrt() # + coord_trans(y="sign_sqrt") #
 }
 ```
 
@@ -324,7 +269,7 @@ if (baseR){
   grid()
 } else {
   p = ggplot(flights, aes( factor(hour),arr_delay))
-  p + geom_boxplot() + coord_trans(y="sign_sqrt") #+ scale_y_sqrt()
+  p + geom_boxplot() + scale_y_sqrt() #+ coord_trans(y="sign_sqrt")
 }
 
 ```

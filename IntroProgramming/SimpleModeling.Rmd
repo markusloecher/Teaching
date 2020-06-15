@@ -1,0 +1,219 @@
+---
+title: "Simple Modeling in R"
+author: "Markus Loecher, Berlin School of Economics and Law"
+output:
+   html_document:
+    #variant: markdown_github
+    toc: true
+    number_sections: true
+    self_contained: yes
+    toc_depth: 2
+    toc_float: true
+    fig_caption: true
+
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message=FALSE)
+baseR = FALSE
+library(pander)
+library(dplyr)
+library(tidyverse)
+library(nycflights13)
+```
+
+```{r}
+#define our own transformation
+require(scales) # trans_new() is in the scales library
+sign_sqrt_trans = function() trans_new("sign_sqrt", function(x) sign(x)*sqrt(abs(x)), function(x) sign(x)*x^2)
+
+```
+
+# Simple data summaries
+
+## Titanic
+
+
+```{r, echo = TRUE }
+train <- read.csv("data/TitanicTrain.csv")
+```
+
+
+The disaster was famous for saving "women and children first", so let's take a look at the Sex and Age variables to see if any patterns are evident. We'll start with the gender of the passengers. After reloading the data into R, take a look at the summary of this variable:
+
+```{r, echo = TRUE }
+round(prop.table(table(train$Sex, train$Survived),1),2)
+```
+
+
+Let's create a new variable, "Child", to indicate whether the passenger is below the age of 18:
+
+```{r, echo = TRUE }
+train$Child <- 0
+train$Child[train$Age < 18] <- 1
+```
+
+Now we want to create a table with both gender and age to see the survival proportions for different subsets.
+Recall the dplyr version of the aggregate function:
+
+```{r, echo = TRUE}
+
+#summarise(group_by(train, Sex, Child), round(mean(Survived),2), length(Survived))
+options(digits=3)
+
+train %>% group_by(Sex, Child) %>%
+  summarize(propSurvived = mean(Survived),
+            sampleSize = length(Survived))
+
+```
+
+
+While the class variable is limited to a manageable 3 values, the fare is again a continuous variable that needs to be reduced to something that can be easily tabulated. Let's bin the fares into less than $10, between $10 and $20, $20 to $30 and more than $30 and store it to a new variable:
+
+```{r, echo = TRUE}
+train$Fare2 <- '30+'
+ train$Fare2[train$Fare < 30 & train$Fare >= 20] <- '20-30'
+ train$Fare2[train$Fare < 20 & train$Fare >= 10] <- '10-20'
+train$Fare2[train$Fare < 10] <- '<10'
+```
+
+* Use the summarise function to compute the proportions and  in each group defined by child, gender and Fare2:
+
+```{r, echo = FALSE}
+
+options(digits=3)
+
+SurvProp <- train %>% group_by(Child, Fare2, Sex) %>%
+  summarize(propSurvived = mean(Survived),
+            sampleSize = length(Survived)) %>% arrange(propSurvived)
+
+SurvProp
+```
+
+* Find strong differences between male/female survival probabilities.
+* Partition your data into even finer subgroups, e.g. age and/or embarkation port and repeat.
+
+```{r, echo = FALSE}
+#summarise(group_by(train, Child, Fare2, Sex, Embarked), round(mean(Survived),2), length(Survived))
+
+options(digits=3)
+
+train %>% group_by(Child, Fare2, Sex, Embarked) %>%
+  summarize(propSurvived = mean(Survived),
+            sampleSize = length(Survived))
+
+```
+
+# Linear Models
+
+```{r, echo = TRUE}
+fit = lm(Survived ~ Sex, data = train)
+summary(fit)
+```
+
+```{r, echo = TRUE}
+fit = lm(Survived ~ Sex + Pclass, data = train)
+summary(fit)
+```
+Try to reframe our exercises from above into linear models.
+
+* Think about 
+  * factors
+  * significance
+  
+
+## Correlation 
+
+#### Are arrival and departure delay correlated?
+
+```{r, fig.width=8}
+set.seed(Sys.Date())
+ranRows=sample(nrow(flights),5000)
+
+if (baseR){
+  plot(arr_delay ~ dep_delay, data=flights[ranRows,], pch=20,cex=0.5,col=carrier)
+  grid()
+} else {
+  p = ggplot(flights[ranRows,], aes( dep_delay,arr_delay, col=carrier ))
+  p + geom_point( alpha=0.5, size=1) + coord_trans(x="sign_sqrt", y="sign_sqrt") # +  geom_smooth(method=lm) 
+}
+
+
+cor(flights$dep_delay,flights$arr_delay, use = "complete.obs",method = "pearson")
+#slooow    
+#cor(flights$dep_delay,flights$arr_delay, use = "complete.obs",method = "kendall")
+  
+#cor(flights$dep_delay,flights$arr_delay, use = "complete.obs",method = "spearman")
+
+Shortdelays = filter(flights, abs(arr_delay)<100 & abs(dep_delay)<100)
+
+cor(Shortdelays$dep_delay,Shortdelays$arr_delay, use = "complete.obs",method = "pearson")
+
+#plot(arr_delay ~ dep_delay,data=Shortdelays)
+```
+
+
+## simple regression 
+
+### mpg vs. weight
+
+
+```{r}
+library(ISLR);data(Auto)
+plot(mpg ~ weight, data = Auto,col = rgb(0,0,1,0.5), pch=20,xlim=c(250, 7000), ylim = c(0,45));grid()
+LSfit = lm(mpg ~ weight, data = Auto)
+
+#overlay regression line
+abline(LSfit, col=2)
+
+#summary
+summary(LSfit)
+
+#diagnostics
+#plot(LSfit, c(1,2,5))
+
+```
+
+**Tasks**
+
+1. Predict mpg for a car that weighs 5000 lbs.
+2. Confidence Interval for slope
+3. Are the least squares assumptions met?
+4. Add 3 outliers to the data: 
+  * weight=500, mpg = 40
+  * weight=$10^4$, mpg = 80
+  * weight=3000, mpg = 80
+
+Points that fall horizontally far from the line are points of high leverage; these points
+can strongly influence the slope of the least squares line. If one of these high leverage
+points does appear to actually invoke its in
+uence on the slope of the line then we call it an in
+uential point. Usually we can say
+a point is influential if, had we fitted the line without it, the influential point would have
+been unusually far from the least squares line.
+
+
+```{r, fig.width=12, fig.height = 6}
+par(mfrow=c(1,3), cex=1.4)
+
+outlrs = cbind(weight=c(500,10000,3000),mpg=c(40,80,80))
+Auto2 = Auto
+
+fit=list()
+for (i in 1:3){
+  Auto2[1,c("weight","mpg")] = outlrs[i,]
+  
+  plot(mpg ~ weight, data = Auto2,col = rgb(1,0.894,0.769,0.5), pch=20);grid()
+  #overlay regression line
+  abline(LSfit, col=2, lwd=2.5)
+  fit[[i]] = lm(mpg ~ weight, data = Auto2) 
+  points(Auto2[1,c("weight","mpg")], col = i+2, pch = 18, cex = 2)
+  #overlay regression line
+  abline(fit[[i]], col=i+2,lwd=2, lty=2)
+  #plot(fit[[i]],5)
+}
+
+
+```
+
+  
